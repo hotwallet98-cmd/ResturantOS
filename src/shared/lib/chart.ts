@@ -1,5 +1,5 @@
 /** Shared palette for recharts so every chart in the app looks consistent. */
-export const chartColors = ['#fe5a11', '#6366f1', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899', '#8b5cf6', '#64748b']
+export const chartColors = ['#059669', '#6366f1', '#0d9488', '#f59e0b', '#0ea5e9', '#ec4899', '#8b5cf6', '#64748b']
 
 export const chartGrid = { stroke: '#e2e8f0', strokeDasharray: '3 3' }
 export const chartAxis = { stroke: '#94a3b8', fontSize: 12, tickLine: false, axisLine: false } as const
