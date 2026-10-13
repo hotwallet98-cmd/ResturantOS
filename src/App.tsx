@@ -11,6 +11,7 @@ import { waiterRoutes } from '@/apps/waiter/routes'
 import { RootRedirect } from '@/shared/components/RequireAuth'
 import { LoadingState, ToastProvider } from '@/shared/components/ui'
 import { AuthProvider } from '@/shared/context/AuthContext'
+import DeploymentGuide from '@/pages/DeploymentGuide'
 
 /**
  * Each app lives in src/apps/<app> with its own pages, nav and routes;
@@ -23,6 +24,7 @@ export default function App() {
         <BrowserRouter>
           <Suspense fallback={<LoadingState />}>
             <Routes>
+              <Route path="/Deployment" element={<DeploymentGuide />} />
               <Route path="/" element={<RootRedirect />} />
               {authRoutes}
               {customerRoutes}
