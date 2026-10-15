@@ -22,6 +22,7 @@ import type { AlertLevel, DraftLine, StockAlert, Usage } from '@/apps/kitchen/se
 import { matchIngredient, menuItemsUsing, stockAlerts, usageForTicket } from '@/apps/kitchen/services/kitchen'
 import type { Ingredient, KitchenTicket, TicketStatus } from '@/shared/services/operations'
 import { getIngredients, menuItems } from '@/shared/services/operations'
+import { USE_MOCKS } from '@/shared/services/client'
 import type { Listener, Phrase, Speaker, VoiceSettings } from '@/apps/kitchen/services/voice'
 import { createListener, createSpeaker, defaultVoiceSettings, orderAnnouncement, parseCommand, phrases, phraseText } from '@/apps/kitchen/services/voice'
 
@@ -102,7 +103,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
   const [deductions, setDeductions] = useState<Deduction[]>([])
   const [unavailable, setUnavailable] = useState<Set<string>>(() => new Set(menuItems.filter((m) => !m.available).map((m) => m.name)))
   const [settings, setSettingsState] = useState<VoiceSettings>(readSettings)
-  const [demoStream, setDemoStream] = useState(true)
+  const [demoStream, setDemoStream] = useState(USE_MOCKS)
 
   const [agentState, setAgentState] = useState<AgentState>('off')
   const [agentError, setAgentError] = useState<string | null>(null)

@@ -31,6 +31,7 @@ export class JwtAuthGuard implements CanActivate {
     }
     const user = await this.auth.loadUser(payload.sub)
     if (!user) throw new UnauthorizedException('User no longer exists')
+    if (!(await this.auth.touchSession(payload.jti, payload.sub))) throw new UnauthorizedException('Session has expired or was revoked')
     req.user = user
     return true
   }
@@ -47,7 +48,10 @@ export class RolesGuard implements CanActivate {
     if (!roles?.length) return true
     const user: AuthUser | undefined = ctx.switchToHttp().getRequest().user
     if (!user) throw new UnauthorizedException('Missing bearer token')
-    if (user.role === 'restaurant_admin' || roles.includes(user.role)) return true
+    if (roles.includes(user.role)) return true
+    // Restaurant admins may stand in for restaurant staff, but never for a
+    // platform super administrator.
+    if (user.role === 'restaurant_admin' && !roles.includes('super_admin')) return true
     throw new ForbiddenException(`This action needs one of these roles: ${roles.join(', ')} (you are ${user.role})`)
   }
 }

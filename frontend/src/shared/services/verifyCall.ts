@@ -8,9 +8,10 @@
  * order feed. Mock mode simulates the conversation with timers.
  */
 import { formatCurrency } from '@/shared/lib/format'
-import { mutate, USE_MOCKS } from './client'
+import { api } from './api'
+import { USE_MOCKS } from './client'
 import type { FlowOrder } from './flow'
-import { cancelOrder, confirmVerified, getFlow, orderTotal, RESTAURANT_NAME, setCall, setOrderStatus } from './flow'
+import { applyServerOrder, cancelOrder, confirmVerified, getFlow, orderTotal, RESTAURANT_NAME, setCall, setOrderStatus } from './flow'
 
 export type CallOutcome = 'confirm' | 'decline' | 'no_answer'
 
@@ -28,10 +29,12 @@ const stateOf = (id: string) => getFlow().orders.find((o) => o.id === id)
 export function startVerificationCall(id: string, outcome: CallOutcome = 'confirm') {
   const order = stateOf(id)
   if (!order) return
+  if (!USE_MOCKS) {
+    void api.orders.startCall(id, { outcome }).then((updated) => applyServerOrder(updated as FlowOrder))
+    return
+  }
   setOrderStatus(id, 'Verifying')
   setCall(id, (c) => ({ state: 'dialing', lines: [], startedAt: Date.now(), attempts: (c?.attempts ?? 0) + 1 }))
-  void mutate('/voice/calls', 'POST', { orderId: id, phone: order.customer?.phone, language: 'ur' })
-  if (!USE_MOCKS) return
 
   const step = (ms: number, fn: () => void) =>
     setTimeout(() => {
@@ -64,6 +67,10 @@ export function startVerificationCall(id: string, outcome: CallOutcome = 'confir
 
 /** Counter overrides when the call can't settle it. */
 export function confirmManually(id: string) {
+  if (!USE_MOCKS) {
+    void api.orders.confirm(id).then((order) => applyServerOrder(order as FlowOrder))
+    return
+  }
   setCall(id, (c) => ({ state: 'confirmed', lines: c?.lines ?? [], startedAt: c?.startedAt ?? Date.now(), attempts: c?.attempts ?? 0 }))
   confirmVerified(id)
 }

@@ -16,4 +16,5 @@ export interface JwtPayload {
   sub: string
   role: Role
   rid?: string
+  jti: string
 }

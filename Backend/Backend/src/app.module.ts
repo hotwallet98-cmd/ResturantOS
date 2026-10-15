@@ -14,6 +14,7 @@ import { TelephonyModule } from './telephony/telephony.module.js'
 import { TenancyModule } from './tenancy/tenancy.module.js'
 import { VerificationModule } from './verification/verification.module.js'
 import { VoiceModule } from './voice/voice.controller.js'
+import { AdminModule } from './admin/admin.module.js'
 
 /**
  * Modular monolith. Dependencies point one way:
@@ -38,6 +39,7 @@ import { VoiceModule } from './voice/voice.controller.js'
     VerificationModule,
     RealtimeModule,
     VoiceModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

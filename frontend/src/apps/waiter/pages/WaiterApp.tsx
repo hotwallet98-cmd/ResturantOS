@@ -321,11 +321,15 @@ function TakeOrder({ tableId, waiter, onDone, onBack }: { tableId: string; waite
   const items = cartItems(cart)
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
 
-  const send = () => {
+  const send = async () => {
     const withNote = note && items.length ? items.map((i, idx) => (idx === 0 ? { ...i, notes: note } : i)) : items
-    const o = sendTableOrder(tableId, withNote, waiter)
-    notify(`#${o.orderNo} sent — counter logged it and kitchen has it`)
-    onDone()
+    try {
+      const o = await sendTableOrder(tableId, withNote, waiter)
+      notify(`#${o.orderNo} sent — counter logged it and kitchen has it`)
+      onDone()
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not send order', 'error')
+    }
   }
 
   return (

@@ -273,15 +273,13 @@ export default function AdminDashboard() {
         </Card>
 
         <AIInsights
-          title="AI Platform Insights & Predictions"
-          subtitle="Generated from usage, billing and support signals · updated 6 min ago"
+          title="Platform Insights"
+          subtitle="Calculated from the current tenant, subscription and onboarding records"
           onAction={(i) => notify(`${i.action}: queued`, 'info')}
           insights={[
-            { title: 'MRR forecast to reach $14.9k by January', detail: 'Driven by 3 Enterprise upgrades and trial conversions; 82% confidence interval $13.6k–$16.2k.', severity: 'opportunity', metric: '+21% in 90d', action: 'View forecast' },
-            { title: 'Sushi Zen and Dragon Wok likely to churn', detail: 'Usage dropped >85% and payments failed. Combined MRR at risk: $748.', severity: 'critical', metric: '86% risk', action: 'Start win-back' },
-            { title: 'Urban Bites ready for an upgrade', detail: 'At 91% of Free-tier limits for 3 weeks and 5 branches — strong fit for Pro.', severity: 'opportunity', metric: '+$150 MRR', action: 'Send upgrade offer' },
-            { title: 'Friday dinner peak will exceed POS sync capacity', detail: 'Predicted 14.8k orders/hour at 20:00 PKT — pre-scale sync workers to 12.', severity: 'warning', metric: '+18% load', action: 'Schedule autoscale' },
-            { title: 'Onboarding time improved', detail: 'Median time from application to go-live is now 4.2 days (was 6.8).', severity: 'success', metric: '-38%' },
+            { title: `${tenants.length} restaurant${tenants.length === 1 ? '' : 's'} in PostgreSQL`, detail: `${kpi.active} active, ${kpi.pending} pending and ${kpi.suspended} suspended.`, severity: 'info' as const, metric: formatCurrency(kpi.mrr) },
+            ...(tenants.filter((t) => t.riskScore >= 60).map((t) => ({ title: `${t.name} needs attention`, detail: `Current persisted risk score is ${t.riskScore}; health score is ${t.healthScore}.`, severity: 'warning' as const, metric: `Risk ${t.riskScore}`, action: 'Review tenant' }))),
+            { title: `${apps.length} onboarding application${apps.length === 1 ? '' : 's'}`, detail: apps.length ? 'Applications are shown by their current persisted workflow stage.' : 'No onboarding applications have been submitted yet.', severity: apps.length ? 'opportunity' as const : 'success' as const },
           ]}
         />
       </div>

@@ -317,13 +317,12 @@ export default function Tenants() {
           <AIInsights
             className="xl:col-span-1"
             title="AI Tenant Risk & Usage Insights"
-            subtitle="Risk model v2.3 · scored nightly"
+            subtitle="Calculated from current persisted tenant scores"
             onAction={(i) => notify(`${i.action} — started`, 'info')}
             insights={[
-              { title: 'Sushi Zen: high churn & payment risk', detail: 'Usage collapsed 88% after suspension; owner opened a complaint.', severity: 'critical', metric: 'Risk 81', action: 'Assign account manager' },
-              { title: 'Dragon Wok: dormant since suspension', detail: 'No logins for 9 days. Recommend final notice before deactivation.', severity: 'warning', metric: 'Risk 77' },
-              { title: 'Urban Bites & Lahore Tikka Co. over 90% of plan', detail: 'Branch and AI credit usage near limits — upsell to Pro.', severity: 'opportunity', metric: '+$300 MRR', action: 'Create upgrade offers' },
-              { title: 'Karachi Grill House healthiest tenant', detail: 'Health 95, daily active staff 108, NPS 72.', severity: 'success', metric: 'Health 95' },
+              ...(list.filter((t) => t.riskScore >= 60).map((t) => ({ title: `${t.name}: elevated risk`, detail: `Persisted risk ${t.riskScore}, health ${t.healthScore}, usage ${t.usagePct}%.`, severity: 'warning' as const, metric: `Risk ${t.riskScore}`, action: 'Review tenant' }))),
+              ...(list.filter((t) => t.usagePct >= 90).map((t) => ({ title: `${t.name} is near its plan limit`, detail: `Current measured usage is ${t.usagePct}% on ${t.plan}.`, severity: 'opportunity' as const, metric: `${t.usagePct}%`, action: 'Review plan' }))),
+              ...(!list.some((t) => t.riskScore >= 60 || t.usagePct >= 90) ? [{ title: 'No tenant risk alerts', detail: 'No current tenant crosses the configured risk or usage thresholds.', severity: 'success' as const }] : []),
             ]}
           />
           <Card className="xl:col-span-2" title="Tenant risk & health scores" subtitle="Higher risk = higher probability of churn or abuse" flush>

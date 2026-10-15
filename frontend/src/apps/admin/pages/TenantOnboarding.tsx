@@ -663,9 +663,9 @@ export default function TenantOnboarding() {
         subtitle="Document checks and bottleneck detection"
         onAction={(i) => notify(`${i.action} — done`, 'info')}
         insights={[
-          { title: 'Bombay Brasserie trade licence looks expired', detail: 'OCR detected an expiry date of 30 Jun 2026 on the uploaded licence.', severity: 'warning', metric: '97% confidence', action: 'Request re-upload' },
-          { title: 'Verification is the slowest stage', detail: 'Average 2.6 days in verification — auto-approve low-risk Free-plan applicants to save ~1.4 days.', severity: 'opportunity', action: 'Enable auto-approval' },
-          { title: 'Nihari House ready for go-live', detail: 'All 9 branches provisioned and health checks passed.', severity: 'success', action: 'Send invitation' },
+          ...(apps.filter((app) => app.blocker).map((app) => ({ title: `${app.restaurant} is blocked`, detail: app.blocker!, severity: 'warning' as const, metric: `${app.progress}%`, action: 'Review application' }))),
+          ...(apps.filter((app) => app.progress >= 90 && app.stage !== 'Live').map((app) => ({ title: `${app.restaurant} is ready for the final step`, detail: `The application is ${app.progress}% complete at the ${app.stage} stage.`, severity: 'opportunity' as const, action: 'Review application' }))),
+          ...(!apps.length ? [{ title: 'No onboarding applications', detail: 'New submissions will appear here from the PostgreSQL onboarding queue.', severity: 'info' as const }] : []),
         ]}
       />
     </div>

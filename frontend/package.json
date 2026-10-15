@@ -10,13 +10,16 @@
                     "preview":  "vite preview"
                 },
     "dependencies":  {
+                         "@restaurantos/api-client":  "0.1.0",
+                         "@restaurantos/contracts":  "0.1.0",
                          "@soniox/client":  "2.3.0",
                          "clsx":  "^2.1.1",
                          "lucide-react":  "^1.54.0",
                          "react":  "^19.2.8",
                          "react-dom":  "^19.2.8",
                          "react-router-dom":  "^7.18.4",
-                         "recharts":  "^3.10.1"
+                         "recharts":  "^3.10.1",
+                         "socket.io-client":  "4.8.4"
                      },
     "devDependencies":  {
                             "@tailwindcss/vite":  "^4.3.3",

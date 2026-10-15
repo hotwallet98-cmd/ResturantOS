@@ -10,6 +10,7 @@ import { formatCurrency, timeAgo } from '@/shared/lib/format'
 import type { FlowOrder, PayMethod } from '@/shared/services/flow'
 import { DELIVERY_FEE, orderTotal, placeCustomerOrder, RESTAURANT_NAME, useFlow } from '@/shared/services/flow'
 import { startVerificationCall } from '@/shared/services/verifyCall'
+import { USE_MOCKS } from '@/shared/services/client'
 
 type Screen = 'menu' | 'checkout' | 'track' | 'orders'
 
@@ -127,13 +128,24 @@ function Checkout({ items, subtotal, onPlaced }: { items: ReturnType<typeof cart
   const [pay, setPay] = useState<PayMethod>('Cash')
   const valid = name.trim() && /^\+?[\d\s-]{10,}$/.test(phone.trim()) && address.trim().length > 8 && items.length > 0
 
-  const submit = (e: FormEvent) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!valid) return
-    const o = placeCustomerOrder({ name: name.trim(), phone: phone.trim(), address: address.trim(), items: notes ? items.map((i, idx) => (idx === 0 ? { ...i, notes } : i)) : items, pay })
-    // Voice agent rings the customer straight away to verify the order
-    startVerificationCall(o.id)
-    onPlaced(o)
+    setSubmitting(true)
+    setError('')
+    try {
+      const o = await placeCustomerOrder({ name: name.trim(), phone: phone.trim(), address: address.trim(), items: notes ? items.map((i, idx) => (idx === 0 ? { ...i, notes } : i)) : items, pay, notes: notes || undefined })
+      // In live mode the backend starts verification automatically.
+      if (USE_MOCKS) startVerificationCall(o.id)
+      onPlaced(o)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not place the order')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -186,7 +198,8 @@ function Checkout({ items, subtotal, onPlaced }: { items: ReturnType<typeof cart
         </div>
       </div>
 
-      <Button type="submit" block size="lg" disabled={!valid}>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <Button type="submit" block size="lg" disabled={!valid} loading={submitting}>
         Place order · {formatCurrency(subtotal + DELIVERY_FEE)}
       </Button>
     </form>
