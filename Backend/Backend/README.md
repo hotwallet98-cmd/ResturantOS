@@ -6,26 +6,25 @@ browser prototype logic from `Frontend/src/shared/services/flow.ts` and `verifyC
 
 - REST: `http://localhost:5000/api`
 - Socket.IO: same server, default path `/socket.io`
-- DB: Prisma 7 + SQLite file (`Backend/api/dev.db`), with a schema that also works on PostgreSQL
+- DB: Prisma 7 + PostgreSQL (`@prisma/adapter-pg`)
 
 ## Setup (npm workspaces)
 
-Needs Node 24 and npm 11. Docker and PostgreSQL are not required. This package is a workspace of the repo-root
+Needs Node 24, npm 11, and PostgreSQL. This package is a workspace of the repo-root
 `package.json`; dependencies are hoisted to the root `node_modules` and there is no lockfile here.
-**Run everything from the repo root** — never a plain `npm install` inside `Backend/api`.
+**Run everything from the repo root** — never a plain `npm install` inside `Backend/Backend`.
 
 ```bash
 npm install                                        # repo root: installs every workspace
-cp Backend/api/.env.example Backend/api/.env       # then edit values if needed
+cp Backend/Backend/.env.example Backend/Backend/.env # set the PostgreSQL password
 npm run build:contracts                            # packages/contracts → dist/ (CJS)
-npm run db:deploy -w @restaurantos/api             # create dev.db and apply migrations
+npm run db:deploy -w @restaurantos/api             # apply PostgreSQL migrations
 npm run db:seed   -w @restaurantos/api             # demo restaurant "Spice Route Kitchen" (slug spice-route, plan Free)
 npm run dev:api                                    # = npm run start:dev -w @restaurantos/api
 ```
 
 Add a dependency: `npm install <pkg>@<exact-version> -w @restaurantos/api` (from the root).
-The root `package.json` holds the `better-sqlite3` override (13.0.3, prebuilt binaries, so no C++ toolchain) and the
-approved npm 11 install scripts (`prisma`, `@prisma/engines`, `esbuild`).
+The root `package.json` holds the npm workspaces and approved install scripts.
 
 ### Demo logins
 
@@ -60,14 +59,15 @@ Smoke test: `npm run db:seed -w @restaurantos/api && npm run start -w @restauran
 `npm run smoke -w @restaurantos/api` in another. It waits about 12 s for the demo call timeline. `API_URL` targets another
 host, `SMOKE_SLUG` another restaurant.
 
-## Environment (`Backend/api/.env`)
+## Environment (`Backend/Backend/.env`)
 
 | Var | Default | Notes |
 |---|---|---|
 | `PORT` | `5000` | HTTP + Socket.IO |
-| `DATABASE_URL` | `file:./dev.db` | Relative to `Backend/api/` (the process cwd; `-w` runs scripts there) |
+| `DATABASE_URL` | required | PostgreSQL URL, e.g. `postgresql://postgres:password@localhost:5432/restaurantos?schema=public` |
 | `JWT_SECRET` | `dev-only-secret` if unset | Change it outside local dev |
 | `JWT_EXPIRES_IN` | `12h` | |
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed browser origins |
 | `SONIOX_API_KEY` | (empty) | Without it, `POST /voice/soniox-config` returns 503 |
 | `SONIOX_REGION` | `us` | `us` / `eu` / `jp` / `in` (Soniox data residency host) |
 | `TELEPHONY_PROVIDER` | `demo` | `demo` or `twilio` (stub, see below) |
@@ -81,7 +81,7 @@ Each folder under `src/` is one Nest module with one responsibility. Dependencie
 
 | Module | Responsibility |
 |---|---|
-| `shared/prisma` | `PrismaService` (better-sqlite3 driver adapter), `createPrismaClient()` |
+| `shared/prisma` | `PrismaService` (PostgreSQL driver adapter), `createPrismaClient()` |
 | `shared/persistence` | `UnitOfWork` (per-restaurant mutation lock + `changes$` feed), `FlowReader` (live snapshot, open table orders, tracking lookup), row → contract mappers |
 | `identity` | Demo login → MFA → JWT; global `JwtAuthGuard` + `RolesGuard`; `@Public @Roles @CurrentUser`, `restaurantOf()` |
 | `tenancy` | Restaurants, slug lookup, plans / entitlements (`assertFeature`, `@RequireFeature`, global `FeatureGuard`); `GET /plans`, `PATCH /restaurant/plan`, `GET /public/restaurants/:slug` |
@@ -151,25 +151,22 @@ the order is left unchanged. The intended design is in the TODO in `src/telephon
 `{ usage_type, expires_in_seconds: 300, client_reference_id }` and returns `{ api_key, region? }`.
 It returns 503 when `SONIOX_API_KEY` is not set and 502 when Soniox rejects the request.
 
-## Switching SQLite → PostgreSQL
+## PostgreSQL setup
 
-The schema uses only portable types (String/Int/Float/Boolean/DateTime/Json, no enums, no scalar lists).
+Create an empty `restaurantos` database, copy `.env.example` to `.env`, set `DATABASE_URL`, then run:
 
-1. From the repo root: `npm install @prisma/adapter-pg@7.10.0 pg@<exact-version> -w @restaurantos/api`
-2. `prisma/schema.prisma`: `datasource db { provider = "postgresql" }`
-3. `Backend/api/.env`: `DATABASE_URL="postgresql://user:pass@localhost:5432/restaurantos?schema=public"`
-4. `src/shared/prisma/create-client.ts`: return `new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })`
-   (`import { PrismaPg } from '@prisma/adapter-pg'`).
-5. The committed migrations are SQLite SQL. Move `prisma/migrations` aside, then run
-   `npm run db:migrate -w @restaurantos/api -- --name init` to create a Postgres baseline, then `npm run db:seed -w @restaurantos/api`.
-6. Optional hardening: money columns as `Decimal @db.Decimal(10,2)`, and Postgres enums for status columns.
+```bash
+npm run db:deploy -w @restaurantos/api
+npm run db:seed -w @restaurantos/api
+```
+
+For production, use a managed PostgreSQL connection URL and run `db:deploy` before starting the API.
 
 ## Migrations
 
 | Migration | Change |
 |---|---|
-| `20261014082313_init` | Initial schema |
-| `20261014093956_storefront_slug_order_notes` | `Restaurant.slug` (unique; existing rows backfilled, `r-001` → `spice-route`), `Order.notes` |
+| `20261015190000_postgresql_init` | PostgreSQL baseline schema |
 
 `payment.txnId` is stored in the existing `Order.paymentTxnId` column and merged into `payment` by the mapper.
 

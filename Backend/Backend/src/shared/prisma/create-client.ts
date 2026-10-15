@@ -1,12 +1,12 @@
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../../../generated/prisma/client.js'
 
 /**
  * Builds a PrismaClient with the driver adapter for the configured database.
- * Dev: SQLite via better-sqlite3 (DATABASE_URL="file:./dev.db", relative to the process cwd = Backend/api).
- * To run on PostgreSQL see README ("Switching to PostgreSQL"): change the datasource provider,
- * install @prisma/adapter-pg + pg and return `new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })` here.
+ * Local development and production both use PostgreSQL. Keep DATABASE_URL in
+ * the environment; never commit database credentials.
  */
-export function createPrismaClient(url = process.env.DATABASE_URL ?? 'file:./dev.db') {
-  return new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) })
+export function createPrismaClient(url = process.env.DATABASE_URL) {
+  if (!url) throw new Error('DATABASE_URL is required')
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })
 }

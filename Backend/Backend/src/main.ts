@@ -7,8 +7,8 @@ import { AppModule } from './app.module.js'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
   app.setGlobalPrefix(API_PREFIX.replace(/^\//, ''))
-  // Dev: open CORS. TODO(prod): restrict to the web / app origins.
-  app.enableCors({ origin: true, credentials: true })
+  const configuredOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean)
+  app.enableCors({ origin: configuredOrigins?.length ? configuredOrigins : ['http://localhost:5173'], credentials: true })
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
   app.enableShutdownHooks()
   const port = Number(process.env.PORT) || DEFAULT_API_PORT

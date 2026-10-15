@@ -35,7 +35,7 @@ export class VoiceController {
   @HttpCode(200)
   async sonioxConfig(@CurrentUser() user: AuthUser, @Body() dto: SonioxConfigDto): Promise<SonioxConfigResponse> {
     const apiKey = this.config.get<string>('SONIOX_API_KEY')
-    if (!apiKey) throw new ServiceUnavailableException('Voice is not configured: set SONIOX_API_KEY in Backend/api/.env (get a key at https://console.soniox.com) and restart the API.')
+    if (!apiKey) throw new ServiceUnavailableException('Voice is not configured: set SONIOX_API_KEY in Backend/Backend/.env (get a key at https://console.soniox.com) and restart the API.')
     const region = (this.config.get<string>('SONIOX_REGION') || 'us').toLowerCase()
     const host = SONIOX_HOSTS[region] ?? SONIOX_HOSTS.us
     let res: Response

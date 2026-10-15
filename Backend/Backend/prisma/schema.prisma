@@ -1,6 +1,6 @@
-// RestaurantOS MVP schema.
-// Kept portable between SQLite (dev) and PostgreSQL: only String / Int / Float /
-// Boolean / DateTime / Json columns, no native types, no enums, no scalar lists.
+// RestaurantOS MVP schema for PostgreSQL.
+// Uses portable scalar types and keeps enum-like values validated by the
+// application contracts so the API remains the source of domain rules.
 // Enum-like columns (role, status, station, ...) are validated in the app against
 // the types in @restaurantos/contracts.
 
@@ -13,7 +13,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Restaurant {

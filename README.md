@@ -63,7 +63,7 @@ npm run dev:mobile          # Expo, then scan the QR with Expo Go
 npm run db:studio           # browse the database at http://localhost:5555
 ```
 
-- **Database**: a SQLite file at `Backend/dev.db` for development. To switch to PostgreSQL, see `Backend/README.md`.
+- **Database**: PostgreSQL for local development and production. Configure `Backend/Backend/.env`, then apply migrations and seed the demo data.
 - **Web and the API**: `VITE_USE_MOCKS=false` runs the MVP flow live against the API. `VITE_MOCK_MODULES=true` keeps modules that don't have backend endpoints yet (inventory, HR, finance, AIâ€¦) on demo data.
 - **Mobile**: set `EXPO_PUBLIC_API_URL=http://<PC-LAN-IP>:5000/api` on a phone, or `http://10.0.2.2:5000/api` on the Android emulator.
 - After changing `packages/contracts`, run `npm run build:contracts`. The API uses its compiled output.

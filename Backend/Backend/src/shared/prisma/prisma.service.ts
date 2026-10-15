@@ -9,7 +9,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   readonly db: PrismaClient
 
   constructor(config: ConfigService) {
-    this.db = createPrismaClient(config.get<string>('DATABASE_URL') ?? 'file:./dev.db')
+    this.db = createPrismaClient(config.get<string>('DATABASE_URL'))
   }
 
   async onModuleInit() {
