@@ -1,0 +1,57 @@
+{
+  "name": "@restaurantos/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RestaurantOS MVP backend — NestJS + Prisma + Socket.IO",
+  "type": "module",
+  "scripts": {
+    "shared:build": "npm run build -w @restaurantos/contracts",
+    "prisma:generate": "prisma generate",
+    "prebuild": "npm run shared:build && npm run prisma:generate",
+    "build": "nest build",
+    "prestart:dev": "npm run shared:build && npm run prisma:generate",
+    "start:dev": "nest start --watch",
+    "start": "node dist/src/main.js",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force",
+    "smoke": "tsx scripts/smoke.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:studio": "node scripts/studio.mjs"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.1.1",
+    "@nestjs/config": "12.0.1",
+    "@nestjs/core": "12.1.1",
+    "@nestjs/jwt": "12.0.2",
+    "@nestjs/platform-express": "12.1.1",
+    "@nestjs/platform-socket.io": "12.1.1",
+    "@nestjs/websockets": "12.1.1",
+    "@prisma/adapter-better-sqlite3": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@restaurantos/contracts": "0.1.0",
+    "better-sqlite3": "13.0.3",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "socket.io": "4.8.4"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "12.0.8",
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "prisma": "7.10.0",
+    "socket.io-client": "4.8.4",
+    "tsx": "4.23.15",
+    "typescript": "6.0.2"
+  },
+  "allowScripts": {
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true,
+    "better-sqlite3": false,
+    "better-sqlite3@13.0.3": false
+  }
+}

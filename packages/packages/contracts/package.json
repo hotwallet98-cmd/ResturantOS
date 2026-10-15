@@ -1,0 +1,21 @@
+{
+  "name": "@restaurantos/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API contract, domain types, subscription plans and order-flow rules shared by every RestaurantOS app",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

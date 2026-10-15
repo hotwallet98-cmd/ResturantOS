@@ -1,0 +1,188 @@
+// RestaurantOS MVP schema.
+// Kept portable between SQLite (dev) and PostgreSQL: only String / Int / Float /
+// Boolean / DateTime / Json columns, no native types, no enums, no scalar lists.
+// Enum-like columns (role, status, station, ...) are validated in the app against
+// the types in @restaurantos/contracts.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Restaurant {
+  id           String        @id
+  /// Public storefront handle, e.g. "spice-route" (GET /public/restaurants/:slug)
+  slug         String        @unique
+  name         String
+  /// string[]
+  branches     Json
+  /// Tier: Free | Pro | Enterprise
+  plan         String        @default("Free")
+  /// Next order number handed out for this restaurant
+  nextOrderNo  Int           @default(1001)
+  users        User[]
+  menuItems    MenuItem[]
+  tables       DiningTable[]
+  reservations Reservation[]
+  riders       Rider[]
+  orders       Order[]
+}
+
+model User {
+  id           String      @id
+  name         String
+  email        String      @unique
+  /// Role from @restaurantos/contracts
+  role         String
+  title        String
+  restaurantId String?
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  riderId      String?     @unique
+  rider        Rider?      @relation(fields: [riderId], references: [id])
+}
+
+model MenuItem {
+  id           String     @id
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  position     Int
+  name         String
+  emoji        String
+  category     String
+  description  String
+  price        Float
+  station      String
+  prepMins     Int
+  veg          Boolean
+  available    Boolean
+  /// PriceOption[]
+  variants     Json
+
+  @@index([restaurantId])
+}
+
+model DiningTable {
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+  /// Table code shown to staff, e.g. "T4" — unique per restaurant
+  id            String
+  position      Int
+  name          String
+  area          String
+  seats         Int
+  shape         String
+  status        String
+  col           Int
+  row           Int
+  guests        Int?
+  guestName     String?
+  server        String?
+  seatedAt      DateTime?
+  billTotal     Float?
+  reservedFor   String?
+  billRequested Boolean    @default(false)
+  reservationId String?
+
+  @@id([restaurantId, id])
+}
+
+model Reservation {
+  id           String     @id
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  guest        String
+  phone        String
+  party        Int
+  time         DateTime
+  tableId      String?
+  area         String
+  source       String
+  status       String
+  occasion     String?
+  notes        String?
+  noShowRisk   Float
+  visits       Int
+
+  @@index([restaurantId])
+}
+
+model Rider {
+  id           String     @id
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  position     Int
+  name         String
+  phone        String
+  vehicle      String
+  /// Available | On delivery | Offline
+  status       String
+  user         User?
+  orders       Order[]
+
+  @@index([restaurantId])
+}
+
+model Order {
+  id            String      @id
+  restaurantId  String
+  restaurant    Restaurant  @relation(fields: [restaurantId], references: [id])
+  orderNo       Int
+  type          String
+  source        String
+  tableId       String?
+  guests        Int?
+  waiter        String?
+  /// { name, phone, address? }
+  customer      Json?
+  /// Order-level note from the customer or waiter (FlowOrder.notes)
+  notes         String?
+  status        String
+  priority      String
+  predictedMins Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  /// { status, at }[]
+  history       Json
+  /// VerificationCall
+  call          Json?
+  riderId       String?
+  rider         Rider?      @relation(fields: [riderId], references: [id])
+  payOnDelivery String?
+  /// { method, amount, tip, at } — txnId is kept in its own column and merged in by the mapper
+  payment       Json?
+  /// Easypaisa / card reference (FlowOrder.payment.txnId)
+  paymentTxnId  String?
+  remake        Boolean     @default(false)
+  /// Secret for public tracking (customer app orders only)
+  trackingToken String?
+  items         OrderItem[]
+
+  @@unique([restaurantId, orderNo])
+  @@index([restaurantId, status])
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  position  Int
+  itemId    String
+  name      String
+  emoji     String
+  qty       Int
+  price     Float
+  station   String
+  /// string[]
+  modifiers Json
+  notes     String?
+  done      Boolean @default(false)
+
+  @@index([orderId])
+}

@@ -1,32 +1,30 @@
 {
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@soniox/client": "2.3.0",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.54.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4",
-    "recharts": "^3.10.1"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxlint": "^1.81.0",
-    "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.2",
-    "vite": "^8.3.0"
-  }
+    "name":  "restaurantos",
+    "private":  true,
+    "description":  "RestaurantOS monorepo: one web app (Frontend), one mobile app (MobileApps), the API (Backend) and shared packages (packages/*). The mobile app installs separately because Expo pins its own React.",
+    "workspaces":  [
+                       "packages/packages/*",
+                       "frontend",
+                       "Backend/Backend"
+                   ],
+    "scripts":  {
+                    "build:contracts":  "npm run build -w @restaurantos/contracts",
+                    "dev:api":  "npm run start:dev -w @restaurantos/api",
+                    "dev:web":  "npm run dev -w @restaurantos/web",
+                    "dev:mobile":  "npm --prefix \"Mobile Apps\" run start",
+                    "db:seed":  "npm run db:seed -w @restaurantos/api",
+                    "db:studio":  "npm run db:studio -w @restaurantos/api",
+                    "typecheck":  "npm run typecheck --workspaces --if-present",
+                    "install:mobile":  "npm --prefix \"Mobile Apps\" install"
+                },
+    "overrides":  {
+                      "better-sqlite3":  "13.0.3"
+                  },
+    "allowScripts":  {
+                         "prisma@7.10.0":  true,
+                         "@prisma/engines@7.10.0":  true,
+                         "esbuild@0.28.2":  true,
+                         "better-sqlite3":  false,
+                         "better-sqlite3@13.0.3":  false
+                     }
 }

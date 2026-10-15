@@ -1,0 +1,23 @@
+{
+  "name": "@restaurantos/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed REST + Socket.IO client for the RestaurantOS API, shared by web and mobile apps",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@restaurantos/contracts": "0.1.0"
+  },
+  "peerDependencies": {
+    "socket.io-client": "4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "4.8.4",
+    "typescript": "~6.0.2"
+  }
+}
