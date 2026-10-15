@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Brand: warm "ember" orange */
+  --color-brand-50: #fff5ed;
+  --color-brand-100: #ffe8d4;
+  --color-brand-200: #ffcda8;
+  --color-brand-300: #ffaa70;
+  --color-brand-400: #ff7b37;
+  --color-brand-500: #fe5a11;
+  --color-brand-600: #ef3f07;
+  --color-brand-700: #c62d08;
+  --color-brand-800: #9d250f;
+  --color-brand-900: #7e2210;
+
+  /* Sidebar / dark surfaces */
+  --color-ink-700: #2a2d36;
+  --color-ink-800: #1f2129;
+  --color-ink-900: #16181e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+::selection {
+  @apply bg-brand-100 text-brand-900;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(63 66 77) transparent;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.18s ease-out; }
+.animate-slide-in-right { animation: slide-in-right 0.22s ease-out; }
+
+/* Kitchen voice agent level bars */
+@keyframes voice-bar {
+  0%, 100% { height: 4px; }
+  50% { height: 18px; }
+}
+.animate-voice-bar { animation: voice-bar 0.9s ease-in-out infinite; }

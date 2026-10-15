@@ -1,88 +1,69 @@
-# RestaurantOS — Frontend Prototype
+# RestaurantOS
 
-React prototype of the RestaurantOS platform, built from the product mind map. It runs entirely on mock data so it can be demoed before the backend exists.
+A restaurant operating system: **one web app**, **one mobile app** and **one API**, all with role-based access.
 
-**Stack:** React 19 · TypeScript · Vite · Tailwind CSS v4 · React Router 7 · Recharts · lucide-react
+```
+ResturantOS/
+â”œâ”€â”€ Frontend/        Web app (React + Vite) on :5173, with role-based login
+â”‚                      /platform     Super Admin (platform owner)
+â”‚                      /app          Restaurant Admin (Manage)
+â”‚                      /counter      Counter / cashier
+â”‚                      /kitchen      Kitchen (KDS + Urdu voice agent)
+â”‚                      /floor        Waiter (tablet)
+â”‚                      /store/:slug  Customer online store (public, no login)
+â”œâ”€â”€ MobileApps/      Mobile app (React Native + Expo)
+â”‚                      opens as the customer store; "Staff login" turns it into
+â”‚                      the Waiter or Rider app depending on the role
+â”œâ”€â”€ Backend/         API (NestJS modular monolith + Prisma + Socket.IO) on :5000/api
+â””â”€â”€ packages/        shared code
+    â”œâ”€â”€ contracts/     API contract, domain types, order rules, subscription plans
+    â”œâ”€â”€ api-client/    typed REST + Socket.IO client (web + mobile)
+    â””â”€â”€ ui-web/        React + Tailwind UI kit and theme (web)
+```
+
+## How access works
+
+- **One login for every staff role.** The backend checks the role and the restaurant's plan on every request (`TRANSITION_ROLES`, plan features). The web app sends each role to its own workspace. The restaurant admin can switch between Manage, Counter, Kitchen and Floor.
+- **Customers never log in.** The store is public per restaurant slug, and an order is tracked with a tracking token.
+- **Riders** use the mobile app, which needs the camera for the QR bag scan and maps for navigation.
+- Each role's pages are lazy-loaded, so a browser only downloads code for screens it actually opens.
+
+## MVP scope (Free tier)
+
+1. **Dine-in**: The waiter seats a table (reservation or walk-in) and takes the order. The counter logs it and forwards it to the kitchen. The kitchen marks it ready, which alerts the waiter and the counter. The waiter serves, the counter takes the bill and tip, and the table is freed.
+2. **Delivery**: The customer orders from the store, on web or mobile. The voice agent calls them to confirm. The kitchen gets a voice alert and staff confirm. A rider is notified. When it's ready, the counter packs it with a QR bag label. The rider scans the label, delivers, and collects Cash or Easypaisa.
+
+Pro and Enterprise unlock everything else. Plans are defined in `packages/contracts/src/plans.ts`.
+
+## Local installation paths
+
+The current checkout uses `frontend/`, `Backend/Backend/`, `packages/packages/*`, and `Mobile Apps/`. Root npm scripts resolve these locations; run them from this directory.
+
+```powershell
+npm install
+npm run install:mobile
+npm run build:contracts
+npm run dev:web
+# In separate terminals:
+npm run dev:api
+npm run dev:mobile
+```
 
 ## Run it
 
 ```bash
-cd Frontend
-npm install
-npm run dev        # http://localhost:5173
-npm run build      # type-check + production build
+npm install                 # web, API, packages (npm workspaces)
+npm run build:contracts
+npm run install:mobile      # the Expo app installs separately (it pins its own React)
+
+npm run db:seed             # demo restaurant "spice-route"
+npm run dev:api             # http://localhost:5000/api   (health: /api/health)
+npm run dev:web             # http://localhost:5173
+npm run dev:mobile          # Expo, then scan the QR with Expo Go
+npm run db:studio           # browse the database at http://localhost:5555
 ```
 
-Sign in with any password. Pick **Super Admin** or **Restaurant** on the login screen. Use **Fill demo code** on the MFA step. Once signed in, the user menu (top right) switches between the two portals.
-
-## What's in it (mind map → routes)
-
-| Mind map area | Route | File |
-|---|---|---|
-| Secure Login & MFA, Password Recovery | `/login` | `pages/auth/Login.tsx` |
-| **Super Admin Portal** | | |
-| Super Admin Dashboard | `/admin` | `pages/admin/Dashboard.tsx` |
-| Restaurant / Tenant Management | `/admin/tenants` | `pages/admin/Tenants.tsx` |
-| Restaurant Onboarding Flow (registration → activation) | `/admin/onboarding` | `pages/admin/TenantOnboarding.tsx` |
-| Subscription & Billing Management | `/admin/subscriptions` | `pages/admin/Subscriptions.tsx` |
-| Platform User & Access Management | `/admin/users` | `pages/admin/PlatformUsers.tsx` |
-| Super Admin Authentication | `/admin/security` | `pages/admin/Authentication.tsx` |
-| Platform Configuration & Integrations | `/admin/config` | `pages/admin/PlatformConfig.tsx` |
-| Platform Support & Monitoring | `/admin/support` | `pages/admin/Support.tsx` |
-| **Restaurant Admin Setup** (activation → go-live) | `/setup` | `pages/onboarding/RestaurantAdminSetup.tsx` |
-| **Restaurant's Operations** | | |
-| Operations dashboard | `/app` | `pages/restaurant/Dashboard.tsx` |
-| Central AI & Automation Engine | `/app/ai` | `pages/restaurant/AIEngine.tsx` |
-| Order & POS Management | `/app/pos` | `pages/restaurant/Pos.tsx` |
-| Table & Reservation Management | `/app/tables` | `pages/restaurant/Tables.tsx` |
-| Delivery & Takeaway Management | `/app/delivery` | `pages/restaurant/Delivery.tsx` |
-| Customer & Loyalty Management | `/app/customers` | `pages/restaurant/Customers.tsx` |
-| Kitchen Operations (KDS) | `/app/kitchen` | `pages/restaurant/Kitchen.tsx` |
-| Menu & Recipe Management | `/app/menu` | `pages/restaurant/Menu.tsx` |
-| Inventory Management | `/app/inventory` | `pages/restaurant/Inventory.tsx` |
-| Suppliers & Procurement | `/app/suppliers` | `pages/restaurant/Suppliers.tsx` |
-| Online Menu Management | `/app/online-menu` | `pages/restaurant/OnlineMenu.tsx` |
-| Social Media & Marketing | `/app/social` | `pages/restaurant/SocialMedia.tsx` |
-| Employee & HR Management | `/app/employees` | `pages/restaurant/Employees.tsx` |
-| Finance & Accounting | `/app/finance` | `pages/restaurant/Finance.tsx` |
-| Quality, Safety & Compliance | `/app/compliance` | `pages/restaurant/Compliance.tsx` |
-| Reports & Business Intelligence | `/app/reports` | `pages/restaurant/Reports.tsx` |
-
-Each module's **AI** capability from the mind map (forecasting, recommendations, anomaly detection, and so on) appears on that page as an "AI Insights" panel. The **AI Copilot** button in the top bar is available on every screen.
-
-## Project structure
-
-```
-src/
-  components/
-    ui/          Design system: Button, Card, DataTable, Tabs, Modal/Drawer, Form, StatCard, AIInsights, …
-    layout/      AppShell (sidebar + top bar), CopilotDrawer
-  context/       AuthContext (session user, selected branch)
-  hooks/         useAsync (loads data from a service function)
-  lib/           format (currency/dates), chart (Recharts theme), cn
-  services/      API layer + mock data, one file per domain
-    client.ts      request()/mutate(): mock vs. real backend switch
-    auth.ts        login, MFA, password reset
-    copilot.ts     AI copilot
-    admin.ts       Super Admin + onboarding
-    operations.ts  POS, kitchen, menu, tables, inventory, delivery, HR
-    business.ts    suppliers, customers, online menu, social, finance, compliance, reports, AI engine
-  pages/         One file per screen (see table above)
-  navigation.ts  Sidebar menus for both portals
-```
-
-## Connecting the backend later
-
-Pages never call `fetch` directly. They call service functions, and every service function goes through `request()` / `mutate()` in `src/services/client.ts`:
-
-```ts
-export const getTenants = () => request<Tenant[]>('/admin/tenants', tenants /* mock data */)
-```
-
-To switch to a real API:
-
-1. Copy `.env.example` to `.env`, then set `VITE_USE_MOCKS=false` and `VITE_API_BASE_URL=https://your-api/api`.
-2. Implement the endpoints named in the `src/services/*.ts` files. The TypeScript interfaces in those files are the request/response contracts.
-3. Auth: `POST /auth/login` → `{ mfaRequired, challengeId }`, then `POST /auth/mfa/verify` → `{ token, user }`. The token is sent as `Authorization: Bearer <token>`.
-
-No page components need to change.
+- **Database**: a SQLite file at `Backend/dev.db` for development. To switch to PostgreSQL, see `Backend/README.md`.
+- **Web and the API**: `VITE_USE_MOCKS=false` runs the MVP flow live against the API. `VITE_MOCK_MODULES=true` keeps modules that don't have backend endpoints yet (inventory, HR, finance, AIâ€¦) on demo data.
+- **Mobile**: set `EXPO_PUBLIC_API_URL=http://<PC-LAN-IP>:5000/api` on a phone, or `http://10.0.2.2:5000/api` on the Android emulator.
+- After changing `packages/contracts`, run `npm run build:contracts`. The API uses its compiled output.
