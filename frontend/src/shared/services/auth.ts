@@ -1,18 +1,11 @@
-import { mock, setToken, USE_MOCKS, http } from './client'
+import type { Role, SessionUser } from '@restaurantos/contracts'
+import { api } from './api'
+import { getToken, mock, setToken, USE_MOCKS } from './client'
 import type { Tier } from './plans'
 
-export type Role = 'super_admin' | 'restaurant_admin' | 'kitchen_staff' | 'counter_staff' | 'waiter' | 'rider'
+export type { Role, SessionUser }
 
-export interface SessionUser {
-  id: string
-  name: string
-  email: string
-  role: Role
-  title: string
-  restaurant?: { id: string; name: string; branches: string[]; plan: Tier }
-}
-
-const spiceRoute = { id: 'r-001', name: 'Spice Route Kitchen', branches: ['Downtown', 'Mall Road', 'Airport'], plan: 'Free' as Tier }
+const spiceRoute = { id: 'r-001', slug: 'spice-route', name: 'Spice Route Kitchen', branches: ['Downtown', 'Mall Road', 'Airport'], plan: 'Free' as Tier }
 
 export const demoUsers: Record<Role, SessionUser> = {
   super_admin: {
@@ -81,13 +74,13 @@ export interface LoginResult {
 }
 
 export async function login(email: string, _password: string, role: Role): Promise<LoginResult> {
-  if (!USE_MOCKS) return http<LoginResult>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: _password }) })
+  if (!USE_MOCKS) return api.auth.login({ email, password: _password })
   return mock({ mfaRequired: true, challengeId: `${role}:${email}` }, 500)
 }
 
 export async function verifyMfa(challengeId: string, code: string): Promise<SessionUser> {
   if (!USE_MOCKS) {
-    const res = await http<{ token: string; user: SessionUser }>('/auth/mfa/verify', { method: 'POST', body: JSON.stringify({ challengeId, code }) })
+    const res = await api.auth.verifyMfa({ challengeId, code })
     setToken(res.token)
     return res.user
   }
@@ -97,9 +90,15 @@ export async function verifyMfa(challengeId: string, code: string): Promise<Sess
   return mock(demoUsers[role], 400)
 }
 
-export async function requestPasswordReset(email: string): Promise<{ sent: boolean }> {
-  if (!USE_MOCKS) return http('/auth/password/forgot', { method: 'POST', body: JSON.stringify({ email }) })
+export async function requestPasswordReset(_email: string): Promise<{ sent: boolean }> {
+  if (!USE_MOCKS) throw new Error('Password reset is not implemented by the API yet.')
   return mock({ sent: true }, 500)
+}
+
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  if (!getToken()) return null
+  if (USE_MOCKS) return null
+  return api.auth.me()
 }
 
 export function logout() {

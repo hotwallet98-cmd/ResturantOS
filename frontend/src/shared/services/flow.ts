@@ -14,8 +14,12 @@
  * Each action also calls its REST endpoint so the backend contract is in one place;
  * with a real backend, replace the local store with a websocket feed.
  */
-import { useSyncExternalStore } from 'react'
-import { mutate } from './client'
+import { applyUpdate, connectOrderFeed, connectStaffFeed } from '@restaurantos/api-client'
+import type { FlowState as ApiFlowState } from '@restaurantos/contracts'
+import type { Socket } from 'socket.io-client'
+import { useEffect, useSyncExternalStore } from 'react'
+import { api } from './api'
+import { API_BASE_URL, getToken, mutate, USE_MOCKS } from './client'
 import type { DiningTable, KitchenTicket, OrderType, Reservation, Station, TicketStatus } from './operations'
 import { diningTables, kitchenTickets, menuItems, reservations, riders } from './operations'
 
@@ -182,6 +186,7 @@ let state: FlowState = load()
 const emit = () => listeners.forEach((l) => l())
 
 function save() {
+  if (!USE_MOCKS) return
   try {
     localStorage.setItem(KEY, JSON.stringify(state))
   } catch {
@@ -207,16 +212,104 @@ export function updateFlow(fn: (s: FlowState) => FlowState) {
   emit()
 }
 
+function fromApi(next: ApiFlowState): FlowState {
+  return {
+    ...next,
+    version: state.version + 1,
+    nextOrderNo: Math.max(1001, ...next.orders.map((order) => order.orderNo + 1)),
+  } as FlowState
+}
+
+export function applyServerOrder(order: FlowOrder) {
+  updateFlow((current) => ({
+    ...current,
+    version: current.version + 1,
+    orders: current.orders.some((item) => item.id === order.id) ? current.orders.map((item) => (item.id === order.id ? order : item)) : [order, ...current.orders],
+  }))
+}
+
+function applyServerState(next: ApiFlowState) {
+  state = fromApi(next)
+  emit()
+}
+
+let staffSocket: Socket | null = null
+let staffSocketToken: string | null = null
+let loadingLiveState = false
+const orderSockets = new Map<string, Socket>()
+const TRACKING_TOKENS_KEY = 'ros.customer.tracking-tokens'
+
+function trackingTokens(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(TRACKING_TOKENS_KEY) ?? '{}') as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+function rememberTrackingToken(orderId: string, token: string) {
+  try {
+    localStorage.setItem(TRACKING_TOKENS_KEY, JSON.stringify({ ...trackingTokens(), [orderId]: token }))
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function trackPublicOrder(orderId: string, token: string) {
+  if (orderSockets.has(orderId)) return
+  void api.store.track(orderId, token).then(({ order }) => applyServerOrder(order as FlowOrder)).catch(() => undefined)
+  orderSockets.set(
+    orderId,
+    connectOrderFeed(API_BASE_URL, orderId, token, {
+      order: (order) => applyServerOrder(order as FlowOrder),
+    }),
+  )
+}
+
+async function ensureLiveConnections() {
+  if (USE_MOCKS) return
+  const token = getToken()
+  if (staffSocket && staffSocketToken !== token) {
+    staffSocket.disconnect()
+    staffSocket = null
+    staffSocketToken = null
+  }
+  if (token && !staffSocket) {
+    staffSocketToken = token
+    if (!loadingLiveState) {
+      loadingLiveState = true
+      void api.flow().then(applyServerState).finally(() => {
+        loadingLiveState = false
+      })
+    }
+    staffSocket = connectStaffFeed(API_BASE_URL, token, {
+      snapshot: applyServerState,
+      order: (order) => applyServerOrder(order as FlowOrder),
+      table: (table) => applyServerState(applyUpdate(state, 'tables', table) as ApiFlowState),
+      rider: (rider) => applyServerState(applyUpdate(state, 'riders', rider) as ApiFlowState),
+      reservation: (reservation) => applyServerState(applyUpdate(state, 'reservations', reservation) as ApiFlowState),
+    })
+  }
+  for (const [orderId, trackingToken] of Object.entries(trackingTokens())) trackPublicOrder(orderId, trackingToken)
+}
+
 const subscribe = (l: () => void) => {
   listeners.add(l)
   return () => listeners.delete(l)
 }
 
 export function useFlow(): FlowState {
+  useEffect(() => {
+    void ensureLiveConnections()
+  }, [])
   return useSyncExternalStore(subscribe, getFlow)
 }
 
 export function resetFlow() {
+  if (!USE_MOCKS) {
+    void api.flow().then(applyServerState)
+    return
+  }
   state = seed()
   save()
   emit()
@@ -245,7 +338,8 @@ export function setOrderStatus(id: string, status: FlowStatus) {
     items: status === 'Ready' ? x.items.map((i) => ({ ...i, done: true })) : x.items,
     history: [...x.history, { status, at: now() }],
   }))
-  void mutate(`/orders/${id}/status`, 'PATCH', { id, status })
+  if (USE_MOCKS) void mutate(`/orders/${id}/status`, 'PATCH', { id, status })
+  else void api.orders.setStatus(id, status).then((order) => applyServerOrder(order as FlowOrder))
 
   // Rider is notified as soon as the kitchen accepts a delivery (phone + address)
   if (status === 'Preparing' && o.type === 'Delivery' && !o.riderId) {
@@ -256,6 +350,7 @@ export function setOrderStatus(id: string, status: FlowStatus) {
 
 export function updateOrderItems(id: string, items: FlowItem[]) {
   patchOrder(id, (o) => ({ ...o, items }))
+  if (!USE_MOCKS) void api.orders.updateItems(id, { items: items.map(({ done, station }) => ({ done, station })) }).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 function newOrder(partial: Omit<FlowOrder, 'id' | 'orderNo' | 'createdAt' | 'updatedAt' | 'history'>): FlowOrder {
@@ -276,7 +371,22 @@ const prepMins = (items: FlowItem[]) => Math.max(8, ...items.map((i) => menuItem
 
 /* Customer app */
 
-export function placeCustomerOrder(input: { name: string; phone: string; address: string; items: FlowItem[]; pay: PayMethod; notes?: string }) {
+export async function placeCustomerOrder(input: { name: string; phone: string; address: string; items: FlowItem[]; pay: PayMethod; notes?: string }): Promise<FlowOrder> {
+  if (!USE_MOCKS) {
+    const result = await api.store.placeOrder('spice-route', {
+      name: input.name,
+      phone: input.phone,
+      address: input.address,
+      pay: input.pay === 'Easypaisa' ? 'Easypaisa' : 'Cash',
+      items: input.items.map(({ itemId, qty, modifiers, notes }) => ({ itemId, qty, modifiers, notes })),
+      notes: input.notes,
+    })
+    const order = result.order as FlowOrder
+    rememberTrackingToken(order.id, result.trackingToken)
+    applyServerOrder(order)
+    trackPublicOrder(order.id, result.trackingToken)
+    return order
+  }
   return newOrder({
     type: 'Delivery',
     source: 'Customer App',
@@ -297,11 +407,13 @@ export function setCall(id: string, fn: (c: VerificationCall | undefined) => Ver
 
 /** Forward a verified customer order to the kitchen. */
 export function confirmVerified(id: string) {
-  setOrderStatus(id, 'Received')
+  if (USE_MOCKS) setOrderStatus(id, 'Received')
+  else void api.orders.confirm(id).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 export function cancelOrder(id: string) {
-  setOrderStatus(id, 'Cancelled')
+  if (USE_MOCKS) setOrderStatus(id, 'Cancelled')
+  else void api.orders.cancel(id).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 /* Waiter */
@@ -322,10 +434,20 @@ export function seatTable(tableId: string, input: { guests: number; guestName: s
   if (input.reservationId) {
     updateFlow((s) => ({ ...s, reservations: s.reservations.map((r) => (r.id === input.reservationId ? { ...r, status: 'Seated', table: tableId } : r)) }))
   }
-  void mutate(`/tables/${tableId}/seat`, 'POST', { tableId, ...input })
+  if (USE_MOCKS) void mutate(`/tables/${tableId}/seat`, 'POST', { tableId, ...input })
+  else void api.tables.seat(tableId, { guests: input.guests, guestName: input.guestName, reservationId: input.reservationId })
 }
 
-export function sendTableOrder(tableId: string, items: FlowItem[], waiter: string) {
+export async function sendTableOrder(tableId: string, items: FlowItem[], waiter: string): Promise<FlowOrder> {
+  if (!USE_MOCKS) {
+    const order = await api.orders.createForTable({
+      tableId,
+      items: items.map(({ itemId, qty, modifiers, notes }) => ({ itemId, qty, modifiers, notes })),
+      notes: items.find((item) => item.notes)?.notes,
+    })
+    applyServerOrder(order as FlowOrder)
+    return order as FlowOrder
+  }
   const table = state.tables.find((t) => t.id === tableId)
   // Waiter device → counter logs it and forwards to the kitchen in one step
   return newOrder({ type: 'Dine-in', source: 'Waiter', table: tableId, guests: table?.guests, waiter, items, status: 'Received', priority: 'Normal', predictedMins: prepMins(items) })
@@ -333,10 +455,12 @@ export function sendTableOrder(tableId: string, items: FlowItem[], waiter: strin
 
 export function setTableStatus(tableId: string, status: FlowTable['status']) {
   patchTable(tableId, (t) => ({ ...t, status }))
+  if (!USE_MOCKS) void api.tables.setStatus(tableId, status)
 }
 
 export function requestBill(tableId: string) {
   patchTable(tableId, (t) => ({ ...t, billRequested: true }))
+  if (!USE_MOCKS) void api.tables.requestBill(tableId)
 }
 
 export const tableOrders = (s: FlowState, tableId: string) => s.orders.filter((o) => o.table === tableId && o.type === 'Dine-in' && !['Paid', 'Cancelled'].includes(o.status))
@@ -357,7 +481,10 @@ export function payTable(tableId: string, method: PayMethod, tip: number) {
       t.id === tableId ? { ...t, status: 'Available', guests: undefined, guestName: undefined, server: undefined, seatedAt: undefined, billTotal: undefined, billRequested: false, reservationId: undefined } : t,
     ),
   }))
-  void mutate(`/tables/${tableId}/pay`, 'POST', { tableId, method, tip, total })
+  if (USE_MOCKS) void mutate(`/tables/${tableId}/pay`, 'POST', { tableId, method, tip, total })
+  else void api.tables.pay(tableId, { method, tip }).then(({ table, orders }) => {
+    applyServerState({ ...state, tables: state.tables.map((item) => (item.id === table.id ? table : item)), orders: state.orders.map((item) => orders.find((order) => order.id === item.id) ?? item) } as ApiFlowState)
+  })
 }
 
 /* Rider */
@@ -368,15 +495,18 @@ export function assignRider(orderId: string, riderId: string) {
     orders: s.orders.map((o) => (o.id === orderId ? { ...o, riderId, updatedAt: now() } : o)),
     riders: s.riders.map((r) => (r.id === riderId ? { ...r, status: 'On delivery' } : r)),
   }))
-  void mutate(`/delivery/orders/${orderId}/assign`, 'POST', { orderId, riderId })
+  if (USE_MOCKS) void mutate(`/orders/${orderId}/assign`, 'POST', { riderId })
+  else void api.orders.assignRider(orderId, { riderId }).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 export function setRiderStatus(riderId: string, status: FlowRider['status']) {
   updateFlow((s) => ({ ...s, riders: s.riders.map((r) => (r.id === riderId ? { ...r, status } : r)) }))
+  if (!USE_MOCKS) void api.riders.setStatus(riderId, { status })
 }
 
 export function riderPickup(orderId: string) {
-  setOrderStatus(orderId, 'PickedUp')
+  if (USE_MOCKS) setOrderStatus(orderId, 'PickedUp')
+  else void api.orders.pickup(orderId).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 export function deliverOrder(orderId: string, method: PayMethod) {
@@ -390,7 +520,8 @@ export function deliverOrder(orderId: string, method: PayMethod) {
     ),
     riders: s.riders.map((r) => (r.id === o.riderId && !s.orders.some((y) => y.id !== orderId && y.riderId === r.id && ['Preparing', 'Ready', 'Packed', 'PickedUp'].includes(y.status)) ? { ...r, status: 'Available' } : r)),
   }))
-  void mutate(`/delivery/orders/${orderId}/deliver`, 'POST', { orderId, method })
+  if (USE_MOCKS) void mutate(`/orders/${orderId}/deliver`, 'POST', { method })
+  else void api.orders.deliver(orderId, { method: method === 'Easypaisa' ? 'Easypaisa' : 'Cash' }).then((order) => applyServerOrder(order as FlowOrder))
 }
 
 /* ------------------------------------------------------------------ */

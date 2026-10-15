@@ -378,10 +378,9 @@ export default function Support() {
             subtitle="Every ticket and error is auto-triaged by the support model"
             onAction={(i) => notify(`${i.action} — done`)}
             insights={[
-              { title: 'Talabat failures linked to 3 tickets', detail: 'TCK-4818, ER-1 and INC-118 share the same root cause (expired partner token).', severity: 'critical', metric: '3 merged', action: 'Merge into incident' },
-              { title: 'Billing complaints up 2× this week', detail: 'Duplicate charge reports correlate with the Stripe latency incident retries.', severity: 'warning', metric: '+100%', action: 'Notify billing team' },
-              { title: 'Negative sentiment from Sushi Zen', detail: 'Owner tone escalating; churn risk 86%. Suggest a call from the account manager.', severity: 'warning', action: 'Schedule call' },
-              { title: '62% of "how-to" requests answerable by docs', detail: 'Enable the AI help-centre bot to deflect common onboarding questions.', severity: 'opportunity', action: 'Enable bot' },
+              ...(errors.filter((e) => e.status !== 'Resolved').map((e) => ({ title: `${e.source}: ${e.type}`, detail: e.message, severity: e.severity === 'Critical' ? 'critical' as const : 'warning' as const, metric: `${e.count} events`, action: 'Review error' }))),
+              ...(tickets.filter((t) => t.status !== 'Resolved' && t.status !== 'Closed').slice(0, 3).map((t) => ({ title: `${t.priority} ticket: ${t.subject}`, detail: `${t.tenant} · ${t.category} · ${t.sentiment} sentiment`, severity: t.priority === 'Urgent' ? 'critical' as const : 'warning' as const, action: 'Open ticket' }))),
+              ...(!errors.length && !tickets.length ? [{ title: 'No support or error records', detail: 'Live tickets and monitoring errors will appear here when they are created.', severity: 'success' as const }] : []),
             ]}
           />
           <Card className="xl:col-span-2" flush title="AI triage results" subtitle="Predicted category, sentiment and confidence">

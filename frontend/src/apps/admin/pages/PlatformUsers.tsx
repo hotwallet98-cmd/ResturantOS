@@ -337,13 +337,12 @@ export default function PlatformUsers() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <AIInsights
             title="AI Suspicious Activity Detection"
-            subtitle="Behavioural anomaly model · last scan 4 min ago"
+            subtitle="Current persisted security and MFA signals"
             onAction={(i) => notify(`${i.action} — done`)}
             insights={[
-              { title: 'Impossible travel on James Whitaker', detail: 'London → Lagos in 14 minutes. Account already suspended.', severity: 'critical', metric: '96% confidence', action: 'Force password reset' },
-              { title: 'Credential stuffing against The Burger Lab', detail: '5 failed logins from 3 IPs. Recommend enforcing MFA for this tenant.', severity: 'warning', metric: '91%', action: 'Enforce tenant MFA' },
-              { title: '2 platform users without MFA', detail: 'Zain Abbas and Aisha Rahman have not enrolled.', severity: 'warning', action: 'Send reminder' },
-              { title: 'No privilege escalation detected', detail: 'Role changes in the last 30 days match approved requests.', severity: 'success' },
+              ...(suspicious.map((s) => ({ title: `${s.pattern}: ${s.subject}`, detail: s.detail, severity: s.risk === 'Critical' ? 'critical' as const : 'warning' as const, metric: `${s.confidence}%`, action: 'Review event' }))),
+              ...(users.filter((u) => !u.mfa).length ? [{ title: `${users.filter((u) => !u.mfa).length} platform user(s) without MFA`, detail: users.filter((u) => !u.mfa).map((u) => u.name).join(', '), severity: 'warning' as const, action: 'Review users' }] : []),
+              ...(!suspicious.length && users.every((u) => u.mfa) ? [{ title: 'No current access alerts', detail: 'All stored platform users have MFA and no suspicious-activity records are open.', severity: 'success' as const }] : []),
             ]}
           />
           <div className="space-y-3 xl:col-span-2">

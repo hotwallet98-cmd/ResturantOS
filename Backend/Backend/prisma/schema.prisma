@@ -25,6 +25,10 @@ model Restaurant {
   branches     Json
   /// Tier: Free | Pro | Enterprise
   plan         String        @default("Free")
+  /// Super-admin metadata that does not belong to the restaurant runtime domain.
+  adminData    Json          @default("{}")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   /// Next order number handed out for this restaurant
   nextOrderNo  Int           @default(1001)
   users        User[]
@@ -46,6 +50,45 @@ model User {
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
   riderId      String?     @unique
   rider        Rider?      @relation(fields: [riderId], references: [id])
+  /// Platform-admin profile fields (team, platform role, etc.).
+  adminData    Json        @default("{}")
+  status       String      @default("Active")
+  mfaEnabled   Boolean     @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  sessions     AuthSession[]
+}
+
+/// Revocable JWT-backed sessions. The token carries this row's id as `jti`.
+model AuthSession {
+  id         String    @id
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device     String    @default("Web browser")
+  browser    String    @default("Unknown")
+  ip         String    @default("Unknown")
+  location   String    @default("Unknown")
+  startedAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId, revokedAt])
+}
+
+/// Flexible persisted records for platform configuration, support and audit data.
+/// `kind` is the API resource (ticket, feature_flag, audit_log, etc.).
+model AdminResource {
+  id        String   @id @default(uuid())
+  kind      String
+  key       String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, key])
+  @@index([kind, updatedAt])
 }
 
 model MenuItem {

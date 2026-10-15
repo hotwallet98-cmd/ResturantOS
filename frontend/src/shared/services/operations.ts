@@ -260,7 +260,24 @@ export const promotions: Promotion[] = [
   { id: 'pr-6', name: 'App First Order $5 Off', type: 'Flat', value: 5, code: 'WELCOME5', channel: 'Online', startsAt: daysFromNow(0), endsAt: daysFromNow(60), status: 'Draft', redemptions: 0 },
 ]
 
-export const getMenuItems = () => request<MenuItem[]>('/menu/items', menuItems)
+export const getMenuItems = async (): Promise<MenuItem[]> => {
+  const items = await request<Partial<MenuItem>[]>('/menu', menuItems)
+
+  // The API owns the operational menu fields. The richer web menu UI still
+  // has presentation/analytics fields that are not in the MVP API contract,
+  // so preserve those local values until their backend schema is added.
+  return items.map((item) => {
+    const local = menuItems.find((candidate) => candidate.id === item.id)
+    return {
+      ...(local ?? m(item.id ?? '', item.name ?? 'Menu item', item.emoji ?? '🍽️', (item.category as MenuCategory | undefined) ?? 'Starters', item.price ?? 0, 0, item.station ?? 'Cold', item.prepMins ?? 0, 0)),
+      ...item,
+      variants: item.variants ?? local?.variants ?? [],
+      addons: item.addons ?? local?.addons ?? [],
+      dayParts: item.dayParts ?? local?.dayParts ?? ['Lunch', 'Dinner'],
+      soldWeek: item.soldWeek ?? local?.soldWeek ?? 0,
+    }
+  })
+}
 export const saveMenuItem = (item: MenuItem) => mutate<MenuItem>(`/menu/items/${item.id}`, 'PUT', item)
 export const createMenuItem = (item: MenuItem) => mutate<MenuItem>('/menu/items', 'POST', item)
 export const getRecipes = () => request<Recipe[]>('/menu/recipes', recipes)

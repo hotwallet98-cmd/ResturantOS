@@ -3,11 +3,10 @@ dist/
 build/
 .expo/
 *.log
-.env
-.env.*
 !.env.example
 *.db
 *.db-journal
 Backend/generated/
 _merge/
 *.tsbuildinfo
+config.bat

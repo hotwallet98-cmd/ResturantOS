@@ -1,25 +1,25 @@
 {
-    "name":  "restaurantos",
-    "private":  true,
-    "description":  "RestaurantOS monorepo: one web app (Frontend), one mobile app (MobileApps), the API (Backend) and shared packages (packages/*). The mobile app installs separately because Expo pins its own React.",
-    "workspaces":  [
-                       "packages/packages/*",
-                       "frontend",
-                       "Backend/Backend"
-                   ],
-    "scripts":  {
-                    "build:contracts":  "npm run build -w @restaurantos/contracts",
-                    "dev:api":  "npm run start:dev -w @restaurantos/api",
-                    "dev:web":  "npm run dev -w @restaurantos/web",
-                    "dev:mobile":  "npm --prefix \"Mobile Apps\" run start",
-                    "db:seed":  "npm run db:seed -w @restaurantos/api",
-                    "db:studio":  "npm run db:studio -w @restaurantos/api",
-                    "typecheck":  "npm run typecheck --workspaces --if-present",
-                    "install:mobile":  "npm --prefix \"Mobile Apps\" install"
-    },
-    "allowScripts":  {
-                         "prisma@7.10.0":  true,
-                         "@prisma/engines@7.10.0":  true,
-                      "esbuild@0.28.2":  true
-                     }
+  "name": "restaurantos",
+  "private": true,
+  "description": "RestaurantOS monorepo: one web app (Frontend), one mobile app (MobileApps), the API (Backend) and shared packages (packages/*). The mobile app installs separately because Expo pins its own React.",
+  "workspaces": [
+    "packages/packages/*",
+    "frontend",
+    "Backend/Backend"
+  ],
+  "scripts": {
+    "build:contracts": "node init && npm run build -w @restaurantos/contracts",
+    "dev:api": "node init && npm run start:dev -w @restaurantos/api",
+    "dev:web": "node init && npm run dev -w @restaurantos/web",
+    "dev:mobile": "node init && npm --prefix \"Mobile Apps\" run start",
+    "db:seed": "npm run db:seed -w @restaurantos/api",
+    "db:studio": "npm run db:studio -w @restaurantos/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "install:mobile": "npm --prefix \"Mobile Apps\" install"
+  },
+  "allowScripts": {
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true
+  }
 }

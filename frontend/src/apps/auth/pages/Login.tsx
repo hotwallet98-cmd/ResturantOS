@@ -111,11 +111,17 @@ export default function Login() {
   }
 
   const submitForgot = async (e: FormEvent) => {
+    setError('')
     e.preventDefault()
     setLoading(true)
-    await requestPasswordReset(email)
-    setLoading(false)
-    setStep('forgot-sent')
+    try {
+      await requestPasswordReset(email)
+      setStep('forgot-sent')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password reset failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

@@ -464,9 +464,8 @@ export default function PlatformConfig() {
             subtitle="Cost & consumption anomalies"
             onAction={(i) => notify(`${i.action} — applied`)}
             insights={[
-              { title: '3 tenants hit 100% of credits', detail: 'Urban Bites, Lahore Tikka Co. and Al Noor Shawarma. Copilot is falling back to cached answers.', severity: 'warning', action: 'Offer AI add-on' },
-              { title: 'Route forecasting to a smaller model', detail: 'claude-haiku-4-5 delivered equal accuracy on forecasting at 40% lower cost in last week’s A/B test.', severity: 'opportunity', metric: '-$310/mo', action: 'Apply routing' },
-              { title: 'Spend on track', detail: `Projected month-end AI spend ${formatCurrency(totalCost * 2.2)} vs budget ${formatCurrency(limits.monthlyBudget)}.`, severity: 'success' },
+              ...((usage?.byTenant ?? []).filter((t) => t.limit > 0 && t.used >= t.limit).map((t) => ({ title: `${t.tenant} reached its AI limit`, detail: `${t.used} of ${t.limit} credits are recorded.`, severity: 'warning' as const, action: 'Review limits' }))),
+              { title: 'Current AI spend', detail: `Recorded spend is ${formatCurrency(totalCost)} against a ${formatCurrency(limits.monthlyBudget)} monthly budget.`, severity: totalCost > limits.monthlyBudget && limits.monthlyBudget > 0 ? 'warning' as const : 'success' as const, metric: formatCurrency(totalCost) },
             ]}
           />
         </div>

@@ -38,8 +38,31 @@ export class AuthService {
     this.challenges.delete(challengeId)
     const user = await this.loadUser(c.userId)
     if (!user) throw new UnauthorizedException('User no longer exists')
-    const payload: JwtPayload = { sub: user.id, role: user.role, rid: user.restaurantId }
+    const sessionId = randomUUID()
+    const expiresAt = new Date(Date.now() + 12 * 60 * 60_000)
+    await this.prisma.db.$transaction([
+      this.prisma.db.authSession.create({ data: { id: sessionId, userId: user.id, expiresAt } }),
+      this.prisma.db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
+      this.prisma.db.adminResource.create({
+        data: {
+          kind: 'login_event',
+          key: randomUUID(),
+          data: { user: user.session.email, event: 'Login success', method: 'Password + MFA', ip: 'Local', location: 'Local development', at: new Date().toISOString() },
+        },
+      }),
+    ])
+    const payload: JwtPayload = { sub: user.id, role: user.role, rid: user.restaurantId, jti: sessionId }
     return { token: await this.jwt.signAsync(payload), user: user.session }
+  }
+
+  async touchSession(id: string, userId: string) {
+    if (!id) return false
+    const session = await this.prisma.db.authSession.findFirst({ where: { id, userId, revokedAt: null, expiresAt: { gt: new Date() } } })
+    if (!session) return false
+    if (Date.now() - session.lastSeenAt.getTime() > 60_000) {
+      await this.prisma.db.authSession.update({ where: { id }, data: { lastSeenAt: new Date() } })
+    }
+    return true
   }
 
   async loadUser(id: string): Promise<AuthUser | null> {

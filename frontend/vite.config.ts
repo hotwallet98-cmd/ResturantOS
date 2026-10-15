@@ -7,6 +7,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@restaurantos/contracts': fileURLToPath(new URL('../packages/packages/contracts/src/index.ts', import.meta.url)),
+      '@restaurantos/api-client': fileURLToPath(new URL('../packages/packages/api-client/src/index.ts', import.meta.url)),
+    },
   },
 })

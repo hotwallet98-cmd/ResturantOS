@@ -480,12 +480,12 @@ export default function Subscriptions() {
           </Card>
           <AIInsights
             title="AI Churn & Revenue Forecasting"
-            subtitle="Model trained on 18 months of billing & usage"
+            subtitle="Calculated from current subscription and billing records"
             onAction={(i) => notify(`${i.action} — queued`, 'info')}
             insights={[
-              { title: 'MRR projected at $14.9k by January', detail: 'Assumes 38% trial conversion and 2 scheduled downgrades.', severity: 'opportunity', metric: '+21%' },
-              { title: '$1.2k MRR at risk of churn', detail: '5 restaurants show high churn probability in the next 60 days.', severity: 'critical', metric: '5 tenants', action: 'Launch retention campaign' },
-              { title: 'Annual billing nudge', detail: 'Offering 2 months free to monthly Pro tenants could lock in $9.6k ARR.', severity: 'info', action: 'Create offer' },
+              { title: `${subs.filter((s) => s.status === 'Active').length} active subscription${subs.filter((s) => s.status === 'Active').length === 1 ? '' : 's'}`, detail: `Current recurring value is ${formatCurrency(mrr)} from persisted subscriptions.`, severity: 'info' as const, metric: formatCurrency(mrr) },
+              ...(billing.churnRisk.map((risk) => ({ title: `${risk.tenant}: churn risk`, detail: risk.reason, severity: risk.probability >= 70 ? 'critical' as const : 'warning' as const, metric: `${risk.probability}%`, action: 'Review account' }))),
+              ...(!billing.churnRisk.length ? [{ title: 'No calculated churn risks', detail: 'A risk will appear when live billing or usage signals cross a configured threshold.', severity: 'success' as const }] : []),
             ]}
           />
           <Card className="xl:col-span-3" title="Churn risk by restaurant" subtitle="Probability of cancelling in the next 60 days" flush>
